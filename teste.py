@@ -6,6 +6,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.popup import Popup
+
 class Menu(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -58,6 +59,8 @@ class QuadradoCampoMinado(Button):
             else:
                 self.text = str(self.quantidade_minas)
                 self.revelada = True
+                if self.quantidade_minas == 0:
+                    self.background_color = (0, 1, 0, 1) 
 
 class MalhaCampoMinado(GridLayout):
     def __init__(self, linhas=10, colunas=10, quantidade_minas=10, **kwargs):
@@ -110,7 +113,7 @@ class MalhaCampoMinado(GridLayout):
         if not instance.marcada_com_bandeira: 
             if instance.tem_mina:
                 instance.text = "X"
-                instance.background_color = (1, 0, 0, 1)
+                instance.background_color = (1, 0, 0, 1)   
                 self.revelar_todas_minas()
                 self.tela_derrota()
             else:
@@ -139,6 +142,7 @@ class MalhaCampoMinado(GridLayout):
             for col in range(self.colunas):
                 if self.buttons[row][col].tem_mina:
                     self.buttons[row][col].text = "X"
+                    self.buttons[row][col].background_color = (1, 0, 0, 1)  
 
     def verificar_vitoria(self):
         for row in range(self.linhas):
