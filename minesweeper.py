@@ -46,19 +46,18 @@ class Menu(Screen):
         layout.add_widget(button_dificil)
         layout.add_widget(button_fechar)
 
-        # Abre o popup
         popup.open()
 
-    # Método para ir para a tela do jogo com a configuração escolhida
+    # Ir para a tela do jogo com a dificuldade escolhida
     def ir_para_jogo(self, linhas, colunas, quantidade_minas, *args):
         self.manager.get_screen('Jogo').criar_novo_jogo(linhas, colunas, quantidade_minas)
         self.manager.current = 'Jogo'
 
-    # Método para ir para a tela de regras
+    # Ir para a tela de regras
     def ir_para_regras(self, *args):
         self.manager.current = 'Regras'
 
-    # Método para sair do jogo
+    # Sair do aplicativo
     def sair(self, *args):
         App.get_running_app().stop()
 
@@ -66,26 +65,25 @@ class Menu(Screen):
 class QuadradoCampoMinado(Button):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Inicializa as propriedades do quadrado
         self.tem_mina = False
         self.quantidade_minas = 0
         self.revelada = False
         self.marcada_com_bandeira = False
 
-    # Método para detectar toques (cliques) no quadrado
+    # Método para detectar o botão direito no quadrado
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos) and touch.button == 'right':
             self.marcar_com_bandeira()
             return True
         return super().on_touch_down(touch)
 
-    # Método para marcar/desmarcar o quadrado com uma bandeira
+    # Método para marcar ou desmarcar o quadrado com uma bandeira
     def marcar_com_bandeira(self):
         if not self.revelada:
             self.marcada_com_bandeira = not self.marcada_com_bandeira
             self.text = "🚩" if self.marcada_com_bandeira else ""
 
-    # Método para revelar o conteúdo do quadrado
+    # Indicador da quantidade de bombas ao redor do quadrado
     def revelar(self):
         if not self.marcada_com_bandeira and not self.revelada:
             self.revelada = True
@@ -96,33 +94,31 @@ class QuadradoCampoMinado(Button):
                 self.text = str(self.quantidade_minas) if self.quantidade_minas > 0 else ""
                 self.background_color = (0, 1, 0, 1) if self.quantidade_minas == 0 else (1, 1, 1, 1)
 
-# Classe que representa a grade do campo minado
+# Malha do campo minado
 class MalhaCampoMinado(GridLayout):
     def __init__(self, linhas=10, colunas=10, quantidade_minas=10, **kwargs):
         super().__init__(**kwargs)
-        # Inicializa as propriedades da grade
         self.linhas = linhas
         self.colunas = colunas
         self.quantidade_minas = quantidade_minas
         self.cols = colunas
         self.criar_malha()
 
-    # Método para criar a grade de quadrados
+    # Método para criar a malha de quadrados
     def criar_malha(self):
         self.clear_widgets()
         self.buttons = [[QuadradoCampoMinado() for _ in range(self.colunas)] for _ in range(self.linhas)]
         
-        # Adiciona os quadrados à grade e vincula eventos de clique
+        # Adiciona os quadrados à malha e vincula os cliques
         for i, row in enumerate(self.buttons):
             for j, quadrado in enumerate(row):
                 quadrado.bind(on_press=lambda instance, x=i, y=j: self.on_button_press(x, y))
                 self.add_widget(quadrado)
 
-        # Coloca as minas e calcula o número de minas ao redor de cada quadrado
         self.colocar_minas()
         self.calcular_minas()
 
-    # Método para colocar minas aleatoriamente na grade
+    # Coloca as minas aleatoriamente na malha
     def colocar_minas(self):
         minas_colocadas = 0
         while minas_colocadas < self.quantidade_minas:
@@ -131,7 +127,7 @@ class MalhaCampoMinado(GridLayout):
                 self.buttons[row][col].tem_mina = True
                 minas_colocadas += 1
 
-    # Método para calcular o número de minas ao redor de cada quadrado
+    # Calcula o número de minas ao redor de cada quadrado
     def calcular_minas(self):
         for row in range(self.linhas):
             for col in range(self.colunas):
@@ -182,31 +178,31 @@ class MalhaCampoMinado(GridLayout):
                 if quadrado.tem_mina:
                     quadrado.revelar()
 
-    # Método para verificar se o jogador venceu
+    # Verificar vitória
     def verificar_vitoria(self):
         if all(quadrado.revelada or quadrado.tem_mina for row in self.buttons for quadrado in row):
             self.vitoria_popup()
 
-    # Método para exibir um popup de derrota
+    # Popup de derrota
     def tela_derrota(self):
-        popup = Popup(title='Game Over', content=Button(text='Game Over!\nClique para tentar de novo', on_press=lambda x: self.restart_game(popup)), size_hint=(0.5, 0.5))
+        popup = Popup(title='Game Over', content=Button(text='Game Over!\nClique para tentar de novo', on_press=lambda x: self.reiniciar_jogo(popup)), size_hint=(0.5, 0.5))
         popup.open()
 
-    # Método para exibir um popup de vitória
+    # Popup de vitória
     def vitoria_popup(self):
-        popup = Popup(title='Vitória!', content=Button(text='Você venceu!\nClique para jogar novamente', on_press=lambda x: self.restart_game(popup)), size_hint=(0.5, 0.5))
+        popup = Popup(title='Vitória!', content=Button(text='Você venceu!\nClique para jogar novamente', on_press=lambda x: self.reiniciar_jogo(popup)), size_hint=(0.5, 0.5))
         popup.open()
 
-    # Método para reiniciar o jogo
-    def restart_game(self, popup):
+    # Reiniciar o jogo
+    def reiniciar_jogo(self, popup):
         popup.dismiss()
         self.criar_malha()
 
-# Classe que representa a tela do jogo
+# Tela do jogo
 class Jogo(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Cria um layout vertical para organizar a grade e o botão de voltar
+        # Cria um layout vertical para organizar a malha e o botão de voltar
         self.layout = BoxLayout(orientation='vertical')
         self.campo_minado = MalhaCampoMinado()
         self.botao_voltar = Button(text='Voltar', size_hint=(1, 0.1), on_release=self.voltar_para_menu)
@@ -214,13 +210,12 @@ class Jogo(Screen):
         self.layout.add_widget(self.botao_voltar)
         self.add_widget(self.layout)
 
-    # Método para criar um novo jogo com a configuração escolhida
+    # Cria um novo jogo com a configuração escolhida
     def criar_novo_jogo(self, linhas, colunas, quantidade_minas):
         self.layout.remove_widget(self.campo_minado)
         self.campo_minado = MalhaCampoMinado(linhas, colunas, quantidade_minas)
         self.layout.add_widget(self.campo_minado)
 
-    # Método para voltar ao menu principal
     def voltar_para_menu(self, *args):
         self.manager.current = 'Menu'
 
