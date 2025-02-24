@@ -1,3 +1,9 @@
+# Remove o ponto vermelho ao usar o botão direito
+from kivy.config import Config
+Config.set('kivy', 'multitouch_on_demand', '0')  
+Config.set('input', 'mouse', 'mouse,disable_multitouch')  
+Config.write()
+
 import random
 from kivy.app import App
 from kivy.uix.button import Button
@@ -72,16 +78,19 @@ class QuadradoCampoMinado(Button):
 
     # Método para detectar o botão direito no quadrado
     def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos) and touch.button == 'right':
-            self.marcar_com_bandeira()
-            return True
+        if self.collide_point(*touch.pos):
+            if touch.button == 'right':
+                self.marcar_com_bandeira()
+                return True  # Impede a propagação do evento
+            elif touch.button == 'left':
+                return super().on_touch_down(touch)
         return super().on_touch_down(touch)
 
     # Método para marcar ou desmarcar o quadrado com uma bandeira
     def marcar_com_bandeira(self):
         if not self.revelada:
             self.marcada_com_bandeira = not self.marcada_com_bandeira
-            self.text = "🚩" if self.marcada_com_bandeira else ""
+            self.text = "B" if self.marcada_com_bandeira else ""
 
     # Indicador da quantidade de bombas ao redor do quadrado
     def revelar(self):
@@ -92,7 +101,10 @@ class QuadradoCampoMinado(Button):
                 self.background_color = (1, 0, 0, 1)  # Vermelho se tiver mina
             else:
                 self.text = str(self.quantidade_minas) if self.quantidade_minas > 0 else ""
-                self.background_color = (0, 1, 0, 1) if self.quantidade_minas == 0 else (1, 1, 1, 1)
+                if self.quantidade_minas > 0:
+                    self.background_color = (0, 0, 1, 1)  # Azul para quadrados com números
+                else:
+                    self.background_color = (0, 1, 0, 1)  # Verde para quadrados vazios
 
 # Malha do campo minado
 class MalhaCampoMinado(GridLayout):
