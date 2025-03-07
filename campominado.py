@@ -1,4 +1,3 @@
-# Remove o ponto vermelho ao usar o botão direito
 from kivy.config import Config
 Config.set('kivy', 'multitouch_on_demand', '0')  
 Config.set('input', 'mouse', 'mouse,disable_multitouch')  
@@ -12,6 +11,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.popup import Popup
+from kivy.clock import Clock
 
 # Tela inicial do aplicativo
 class Menu(Screen):
@@ -90,7 +90,18 @@ class QuadradoCampoMinado(Button):
     def marcar_com_bandeira(self):
         if not self.revelada:
             self.marcada_com_bandeira = not self.marcada_com_bandeira
-            self.text = "B" if self.marcada_com_bandeira else ""
+            if self.marcada_com_bandeira:
+                self.background_normal = 'bandeira.png' 
+                self.background_down = 'bandeira.png'  
+                self.background_disabled_normal = 'bandeira.png' 
+                self.text = ''  
+            else:
+            # Restaura o fundo do botão para o estado padrão
+                self.background_normal = 'atlas://data/images/defaulttheme/button'  
+                self.background_down = 'atlas://data/images/defaulttheme/button_pressed'  
+                self.background_disabled_normal = 'atlas://data/images/defaulttheme/button_disabled' 
+                self.text = ''  
+        self.parent.parent.parent.atualizar_contador_minas()
 
     # Indicador da quantidade de bombas ao redor do quadrado
     def revelar(self):
@@ -157,6 +168,10 @@ class MalhaCampoMinado(GridLayout):
         if quadrado.marcada_com_bandeira or quadrado.revelada:
             return
 
+        # Inicia o cronômetro no primeiro clique
+        if not self.parent.parent.cronometro:
+            self.parent.parent.iniciar_cronometro()
+
         if quadrado.tem_mina:
             quadrado.revelar()
             self.revelar_todas_minas()
@@ -197,11 +212,13 @@ class MalhaCampoMinado(GridLayout):
 
     # Popup de derrota
     def tela_derrota(self):
+        self.parent.parent.parar_cronometro()
         popup = Popup(title='Game Over', content=Button(text='Game Over!\nClique para tentar de novo', on_press=lambda x: self.reiniciar_jogo(popup)), size_hint=(0.5, 0.5))
         popup.open()
 
     # Popup de vitória
     def vitoria_popup(self):
+        self.parent.parent.parar_cronometro()
         popup = Popup(title='Vitória!', content=Button(text='Você venceu!\nClique para jogar novamente', on_press=lambda x: self.reiniciar_jogo(popup)), size_hint=(0.5, 0.5))
         popup.open()
 
@@ -209,6 +226,7 @@ class MalhaCampoMinado(GridLayout):
     def reiniciar_jogo(self, popup):
         popup.dismiss()
         self.criar_malha()
+        self.parent.parent.iniciar_cronometro()
 
 # Tela do jogo
 class Jogo(Screen):
@@ -216,19 +234,58 @@ class Jogo(Screen):
         super().__init__(**kwargs)
         # Cria um layout vertical para organizar a malha e o botão de voltar
         self.layout = BoxLayout(orientation='vertical')
+        
+        # Layout para o cronômetro e contador de minas
+        self.info_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
+        self.tempo_label = Label(text="Tempo: 0")
+        self.minas_label = Label(text="Minas: 0")
+        self.info_layout.add_widget(self.tempo_label)
+        self.info_layout.add_widget(self.minas_label)
+        
         self.campo_minado = MalhaCampoMinado()
         self.botao_voltar = Button(text='Voltar', size_hint=(1, 0.1), on_release=self.voltar_para_menu)
+        
+        self.layout.add_widget(self.info_layout)
         self.layout.add_widget(self.campo_minado)
         self.layout.add_widget(self.botao_voltar)
         self.add_widget(self.layout)
+        
+        self.tempo = 0
+        self.cronometro = None
 
     # Cria um novo jogo com a configuração escolhida
     def criar_novo_jogo(self, linhas, colunas, quantidade_minas):
         self.layout.remove_widget(self.campo_minado)
         self.campo_minado = MalhaCampoMinado(linhas, colunas, quantidade_minas)
         self.layout.add_widget(self.campo_minado)
+        self.minas_label.text = f"Minas: {quantidade_minas}"
+        self.tempo = 0
+        self.tempo_label.text = "Tempo: 0"
+        if self.cronometro:
+            self.cronometro.cancel()
+            self.cronometro = None
+
+    def iniciar_cronometro(self):
+        if not self.cronometro:
+            self.tempo = 0
+            self.tempo_label.text = "Tempo: 0"
+            self.cronometro = Clock.schedule_interval(self.atualizar_cronometro, 1)
+
+    def parar_cronometro(self):
+        if self.cronometro:
+            self.cronometro.cancel()
+            self.cronometro = None
+
+    def atualizar_cronometro(self, dt):
+        self.tempo += 1
+        self.tempo_label.text = f"Tempo: {self.tempo}"
+
+    def atualizar_contador_minas(self):
+        minas_marcadas = sum(quadrado.marcada_com_bandeira for row in self.campo_minado.buttons for quadrado in row)
+        self.minas_label.text = f"Minas: {self.campo_minado.quantidade_minas - minas_marcadas}"
 
     def voltar_para_menu(self, *args):
+        self.parar_cronometro()
         self.manager.current = 'Menu'
 
 # Classe que representa a tela de regras
@@ -254,7 +311,7 @@ class CampoMinado(App):
         sm = ScreenManager()
         sm.add_widget(Menu(name='Menu'))
         sm.add_widget(Jogo(name='Jogo'))
-        sm.add_widget(Regras(name= 'Regras'))
+        sm.add_widget(Regras(name='Regras'))
         return sm
 
 # Inicia o aplicativo
